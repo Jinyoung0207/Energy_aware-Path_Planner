@@ -1,6 +1,6 @@
 # Energy Aware Path Planner 🚁🚗
 
-**PX4-SITL 기반의 시뮬레이션 환경에서의 군집 지상-공중 이중 모드 로봇(Wheelbird)의 에너지 소모량을 고려한 경로 계획 및 제어 패키지
+**PX4-SITL 기반의 시뮬레이션 환경에서 군집 지상-공중 이중 모드 로봇(Wheelbird)의 에너지 소모량을 고려한 경로 계획 및 제어 패키지
 
 ## 🛠️ Environment (개발 환경)
 * **OS:** Ubuntu 20.04 (Focal Fossa)
