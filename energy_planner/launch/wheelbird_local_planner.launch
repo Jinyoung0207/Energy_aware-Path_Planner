@@ -1,0 +1,34 @@
+<launch>
+  <arg name="config" default="$(find energy_planner)/config/energy_aware_path_planner.yaml"/>
+
+  <rosparam command="load" file="$(arg config)" />
+
+
+  <node pkg="energy_planner" type="wheelbird_local_planner" name="wheelbird_local_planner" output="screen">
+    
+    <rosparam param="robot_names">["wheelbird1", "wheelbird2", "wheelbird3", "wheelbird4"]</rosparam>
+    <!-- <rosparam param="robot_names">["wheelbird1", "wheelbird2", "wheelbird3", "wheelbird4", "wheelbird5", "wheelbird6"]</rosparam> -->
+
+    <param name="global_topic_suffix" value="/global_path"/>
+
+    <param name="local_dt" value="0.1"/>
+    <param name="chunk_size" value="30"/>
+    <param name="horizon_s" value="3.0"/>
+    <param name="goal_hold_s" value="2.0"/>
+    <param name="fill_yaw_tangent" value="true"/>
+
+    <param name="align_start" value="true"/>
+    <param name="align_to_now" value="true"/>
+    <param name="start_delay_s" value="0.5"/>
+    <param name="sync_all" value="true"/>
+    <param name="rebase_if_past" value="false"/>
+    <param name="log_debug" value="true"/>
+
+    <param name="rebase_to_local" value="true"/>
+    <param name="apply_rotation" value="false"/>
+    
+    <param name="output_frame" value="map"/> 
+    
+    <param name="use_yaml_anchor" value="true"/> 
+  </node>
+</launch>

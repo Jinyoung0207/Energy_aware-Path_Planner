@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="ns1" default="wheelbird1"/>
+    <arg name="ns2" default="wheelbird2"/>
+    <arg name="ns3" default="wheelbird3"/>
+    <arg name="ns4" default="wheelbird4"/>
+    <arg name="ns5" default="wheelbird5"/>
+    
+    <rosparam command="load" file="$(find wheelbird_control)/config/mpc_ugv.yaml" />
+    <param name="robot_name" type="string" value="$(arg ns3)"/>
+    
+    <group ns="$(arg ns3)">
+        <node name="wheelbird3" pkg="wheelbird_control" type="mpc3_ground" output="screen">
+
+	</node>
+    </group>
+
+</launch>

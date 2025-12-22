@@ -1,0 +1,375 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- ===== 기본 인자 ===== -->
+  <arg name="est" default="ekf2"/>
+  <!-- <arg name="world" default="/home/jinyoung/building_editor_models/지상장애물_벽.world"/> -->
+  <arg name="world" default="/home/jinyoung/building_editor_models/좁은통로.world"/>
+
+  <arg name="vehicle" default="wheelbird"/>
+  <arg name="rviz" default="true"/>
+
+  <!-- 절대경로 xacro -->
+  <arg name="xacro_file"
+       default="/home/jinyoung/PX4-Autopilot/Tools/simulation/gazebo-classic/sitl_gazebo-classic/models/wheelbird/urdf/wheelbird1_base.xacro"/>
+
+  <!-- sim time -->
+  <param name="use_sim_time" value="true"/>
+
+  <!-- RViz 오프셋용 초기 위치 YAML 로드 -->
+  <rosparam command="load"
+            file="/home/jinyoung/wheelbird_ws/src/wheelbird/config/wheelbird_rviz.yaml"
+            param="/initial_positions"/>
+
+  <!-- ===== Gazebo ===== -->
+  <arg name="gui" default="true"/>
+  <arg name="debug" default="false"/>
+  <arg name="verbose" default="false"/>
+  <arg name="paused" default="false"/>
+
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="gui" value="$(arg gui)"/>
+    <arg name="world_name" value="$(arg world)"/>
+    <arg name="debug" value="$(arg debug)"/>
+    <arg name="verbose" value="$(arg verbose)"/>
+    <arg name="paused" value="$(arg paused)"/>
+  </include>
+
+  <!-- ================= wheelbird1 ================= -->
+  <group ns="wheelbird1">
+    <arg name="ID" value="1"/>
+    <arg name="fcu_url" default="udp://:14541@localhost:14581"/>
+
+    <!-- PX4 스폰 -->
+    <include file="$(find px4)/launch/single_wheelbird.launch">
+      <arg name="x" value="2"/>
+      <arg name="y" value="4"/>
+      <arg name="z" value="0"/>
+      <arg name="R" value="0"/>
+      <arg name="P" value="0"/>
+      <arg name="Y" value="0"/>
+      <arg name="vehicle" value="$(arg vehicle)"/>
+      <arg name="mavlink_udp_port" value="14561"/>
+      <arg name="mavlink_tcp_port" value="4561"/>
+      <arg name="ID" value="$(arg ID)"/>
+      <arg name="gst_udp_port" value="$(eval 5600 + arg('ID'))"/>
+      <arg name="video_uri" value="$(eval 5600 + arg('ID'))"/>
+      <arg name="mavlink_cam_udp_port" value="$(eval 14530 + arg('ID'))"/>
+    </include>
+
+    <!-- MAVROS -->
+    <include file="$(find mavros)/launch/px4.launch">
+      <arg name="fcu_url" value="$(arg fcu_url)"/>
+      <arg name="gcs_url" value=""/>
+      <arg name="tgt_system" value="$(eval 1 + arg('ID'))"/>
+      <arg name="tgt_component" value="1"/>
+    </include>
+
+    <!-- URDF + joint_states + RSP + TF -->
+    <param name="robot_description"
+           command="$(find xacro)/xacro --inorder '$(arg xacro_file)' namespace:=wheelbird1 enable_mavlink_interface:=false"/>
+
+    <!-- ★ ns별 joint_state_publisher: /wheelbird1/joint_states 발행 -->
+    <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher" output="screen">
+      <param name="rate" value="50"/>
+      <param name="use_gui" value="false"/>
+    </node>
+
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+      <param name="use_tf_static" value="true"/>
+      <param name="publish_frequency" value="50.0"/>
+      <!-- remap 불필요: 같은 ns의 /wheelbird1/joint_states를 그대로 구독 -->
+    </node>
+
+    <node pkg="wheelbird" type="wheelbird_rviz.py" name="offset_tf_broadcaster" output="screen">
+    <param name="parent_frame" value="map"/>
+    <param name="child_frame"  value="wheelbird1/base_link"/>
+    <param name="pose_topic"   value="/wheelbird1/mavros/local_position/pose"/>
+    <!-- 스파이크/점프 대응 파라미터 -->
+    <param name="jump_pos_thresh" value="0.5"/>     <!-- 한틱 0.5m 이상 튀면 점프 -->
+    <param name="hold_outlier_n"  value="2"/>       <!-- 2틱까지는 무시 -->
+    <param name="clamp_pos_step"  value="0.20"/>    <!-- 틱당 시각적 이동 상한 -->
+    <param name="lp_alpha"        value="0.2"/>     <!-- EMA 저역통과 -->
+    <param name="median_win"      value="3"/>       <!-- 3/5 권장 -->
+    <param name="blend_duration"  value="0.3"/>     <!-- map->odom 보정을 0.3s 블렌딩 -->
+    </node>
+  </group>
+
+  <!-- ================= wheelbird2 ================= -->
+  <group ns="wheelbird2">
+    <arg name="ID" value="2"/>
+    <arg name="fcu_url" default="udp://:14542@localhost:14582"/>
+
+    <include file="$(find px4)/launch/single_wheelbird.launch">
+      <arg name="x" value="2"/>
+      <arg name="y" value="2.4"/>
+      <arg name="z" value="0"/>
+      <arg name="R" value="0"/>
+      <arg name="P" value="0"/>
+      <arg name="Y" value="0"/>
+      <arg name="vehicle" value="$(arg vehicle)"/>
+      <arg name="mavlink_udp_port" value="14562"/>
+      <arg name="mavlink_tcp_port" value="4562"/>
+      <arg name="ID" value="$(arg ID)"/>
+      <arg name="gst_udp_port" value="$(eval 5600 + arg('ID'))"/>
+      <arg name="video_uri" value="$(eval 5600 + arg('ID'))"/>
+      <arg name="mavlink_cam_udp_port" value="$(eval 14530 + arg('ID'))"/>
+    </include>
+
+    <include file="$(find mavros)/launch/px4.launch">
+      <arg name="fcu_url" value="$(arg fcu_url)"/>
+      <arg name="gcs_url" value=""/>
+      <arg name="tgt_system" value="$(eval 1 + arg('ID'))"/>
+      <arg name="tgt_component" value="1"/>
+    </include>
+
+    <param name="robot_description"
+           command="$(find xacro)/xacro --inorder '$(arg xacro_file)' namespace:=wheelbird2 enable_mavlink_interface:=false"/>
+
+    <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher" output="screen">
+      <param name="rate" value="50"/>
+      <param name="use_gui" value="false"/>
+    </node>
+
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+      <param name="use_tf_static" value="true"/>
+      <param name="publish_frequency" value="50.0"/>
+    </node>
+
+    <node pkg="wheelbird" type="wheelbird_rviz.py" name="offset_tf_broadcaster" output="screen">
+    <param name="parent_frame" value="map"/>
+    <param name="child_frame"  value="wheelbird2/base_link"/>
+    <param name="pose_topic"   value="/wheelbird2/mavros/local_position/pose"/>
+    <!-- 스파이크/점프 대응 파라미터 -->
+    <param name="jump_pos_thresh" value="0.5"/>     <!-- 한틱 0.5m 이상 튀면 점프 -->
+    <param name="hold_outlier_n"  value="2"/>       <!-- 2틱까지는 무시 -->
+    <param name="clamp_pos_step"  value="0.20"/>    <!-- 틱당 시각적 이동 상한 -->
+    <param name="lp_alpha"        value="0.2"/>     <!-- EMA 저역통과 -->
+    <param name="median_win"      value="3"/>       <!-- 3/5 권장 -->
+    <param name="blend_duration"  value="0.3"/>     <!-- map->odom 보정을 0.3s 블렌딩 -->
+    </node>
+  </group>
+
+  <!-- ================= wheelbird3 ================= -->
+  <group ns="wheelbird3">
+    <arg name="ID" value="3"/>
+    <arg name="fcu_url" default="udp://:14543@localhost:14583"/>
+
+    <include file="$(find px4)/launch/single_wheelbird.launch">
+      <arg name="x" value="2"/>
+      <arg name="y" value="0.8"/>
+      <arg name="z" value="0"/>
+      <arg name="R" value="0"/>
+      <arg name="P" value="0"/>
+      <arg name="Y" value="0"/>
+      <arg name="vehicle" value="$(arg vehicle)"/>
+      <arg name="mavlink_udp_port" value="14563"/>
+      <arg name="mavlink_tcp_port" value="4563"/>
+      <arg name="ID" value="$(arg ID)"/>
+      <arg name="gst_udp_port" value="$(eval 5600 + arg('ID'))"/>
+      <arg name="video_uri" value="$(eval 5600 + arg('ID'))"/>
+      <arg name="mavlink_cam_udp_port" value="$(eval 14530 + arg('ID'))"/>
+    </include>
+
+    <include file="$(find mavros)/launch/px4.launch">
+      <arg name="fcu_url" value="$(arg fcu_url)"/>
+      <arg name="gcs_url" value=""/>
+      <arg name="tgt_system" value="$(eval 1 + arg('ID'))"/>
+      <arg name="tgt_component" value="1"/>
+    </include>
+
+    <param name="robot_description"
+           command="$(find xacro)/xacro --inorder '$(arg xacro_file)' namespace:=wheelbird3 enable_mavlink_interface:=false"/>
+
+    <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher" output="screen">
+      <param name="rate" value="50"/>
+      <param name="use_gui" value="false"/>
+    </node>
+
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+      <param name="use_tf_static" value="true"/>
+      <param name="publish_frequency" value="50.0"/>
+    </node>
+
+    <node pkg="wheelbird" type="wheelbird_rviz.py" name="offset_tf_broadcaster" output="screen">
+    <param name="parent_frame" value="map"/>
+    <param name="child_frame"  value="wheelbird3/base_link"/>
+    <param name="pose_topic"   value="/wheelbird3/mavros/local_position/pose"/>
+    <!-- 스파이크/점프 대응 파라미터 -->
+    <param name="jump_pos_thresh" value="0.5"/>     <!-- 한틱 0.5m 이상 튀면 점프 -->
+    <param name="hold_outlier_n"  value="2"/>       <!-- 2틱까지는 무시 -->
+    <param name="clamp_pos_step"  value="0.20"/>    <!-- 틱당 시각적 이동 상한 -->
+    <param name="lp_alpha"        value="0.2"/>     <!-- EMA 저역통과 -->
+    <param name="median_win"      value="3"/>       <!-- 3/5 권장 -->
+    <param name="blend_duration"  value="0.3"/>     <!-- map->odom 보정을 0.3s 블렌딩 -->
+    </node>
+  </group>
+
+  <!-- ================= wheelbird4 ================= -->
+  <group ns="wheelbird4">
+    <arg name="ID" value="4"/>
+    <arg name="fcu_url" default="udp://:14544@localhost:14584"/>
+
+    <include file="$(find px4)/launch/single_wheelbird.launch">
+      <arg name="x" value="2"/>
+      <arg name="y" value="-0.8"/>
+      <arg name="z" value="0"/>
+      <arg name="R" value="0"/>
+      <arg name="P" value="0"/>
+      <arg name="Y" value="0"/>
+      <arg name="vehicle" value="$(arg vehicle)"/>
+      <arg name="mavlink_udp_port" value="14564"/>
+      <arg name="mavlink_tcp_port" value="4564"/>
+      <arg name="ID" value="$(arg ID)"/>
+      <arg name="gst_udp_port" value="$(eval 5600 + arg('ID'))"/>
+      <arg name="video_uri" value="$(eval 5600 + arg('ID'))"/>
+      <arg name="mavlink_cam_udp_port" value="$(eval 14530 + arg('ID'))"/>
+    </include>
+
+    <include file="$(find mavros)/launch/px4.launch">
+      <arg name="fcu_url" value="$(arg fcu_url)"/>
+      <arg name="gcs_url" value=""/>
+      <arg name="tgt_system" value="$(eval 1 + arg('ID'))"/>
+      <arg name="tgt_component" value="1"/>
+    </include>
+
+    <param name="robot_description"
+           command="$(find xacro)/xacro --inorder '$(arg xacro_file)' namespace:=wheelbird4 enable_mavlink_interface:=false"/>
+
+    <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher" output="screen">
+      <param name="rate" value="50"/>
+      <param name="use_gui" value="false"/>
+    </node>
+
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+      <param name="use_tf_static" value="true"/>
+      <param name="publish_frequency" value="50.0"/>
+    </node>
+
+    <node pkg="wheelbird" type="wheelbird_rviz.py" name="offset_tf_broadcaster" output="screen">
+    <param name="parent_frame" value="map"/>
+    <param name="child_frame"  value="wheelbird4/base_link"/>
+    <param name="pose_topic"   value="/wheelbird4/mavros/local_position/pose"/>
+    <!-- 스파이크/점프 대응 파라미터 -->
+    <param name="jump_pos_thresh" value="0.5"/>     <!-- 한틱 0.5m 이상 튀면 점프 -->
+    <param name="hold_outlier_n"  value="2"/>       <!-- 2틱까지는 무시 -->
+    <param name="clamp_pos_step"  value="0.20"/>    <!-- 틱당 시각적 이동 상한 -->
+    <param name="lp_alpha"        value="0.2"/>     <!-- EMA 저역통과 -->
+    <param name="median_win"      value="3"/>       <!-- 3/5 권장 -->
+    <param name="blend_duration"  value="0.3"/>     <!-- map->odom 보정을 0.3s 블렌딩 -->
+    </node>
+  </group>
+
+  <!-- ================= wheelbird5 ================= -->
+  <group ns="wheelbird5">
+    <arg name="ID" value="5"/>
+    <arg name="fcu_url" default="udp://:14545@localhost:14585"/>
+
+    <include file="$(find px4)/launch/single_wheelbird.launch">
+      <arg name="x" value="2"/>
+      <arg name="y" value="-2.4"/>
+      <arg name="z" value="0"/>
+      <arg name="R" value="0"/>
+      <arg name="P" value="0"/>
+      <arg name="Y" value="0"/>
+      <arg name="vehicle" value="$(arg vehicle)"/>
+      <arg name="mavlink_udp_port" value="14565"/>
+      <arg name="mavlink_tcp_port" value="4565"/>
+      <arg name="ID" value="$(arg ID)"/>
+      <arg name="gst_udp_port" value="$(eval 5600 + arg('ID'))"/>
+      <arg name="video_uri" value="$(eval 5600 + arg('ID'))"/>
+      <arg name="mavlink_cam_udp_port" value="$(eval 14530 + arg('ID'))"/>
+    </include>
+
+    <include file="$(find mavros)/launch/px4.launch">
+      <arg name="fcu_url" value="$(arg fcu_url)"/>
+      <arg name="gcs_url" value=""/>
+      <arg name="tgt_system" value="$(eval 1 + arg('ID'))"/>
+      <arg name="tgt_component" value="1"/>
+    </include>
+
+    <param name="robot_description"
+           command="$(find xacro)/xacro --inorder '$(arg xacro_file)' namespace:=wheelbird5 enable_mavlink_interface:=false"/>
+
+    <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher" output="screen">
+      <param name="rate" value="50"/>
+      <param name="use_gui" value="false"/>
+    </node>
+
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+      <param name="use_tf_static" value="true"/>
+      <param name="publish_frequency" value="50.0"/>
+    </node>
+
+    <node pkg="wheelbird" type="wheelbird_rviz.py" name="offset_tf_broadcaster" output="screen">
+    <param name="parent_frame" value="map"/>
+    <param name="child_frame"  value="wheelbird5/base_link"/>
+    <param name="pose_topic"   value="/wheelbird5/mavros/local_position/pose"/>
+    <!-- 스파이크/점프 대응 파라미터 -->
+    <param name="jump_pos_thresh" value="0.5"/>     <!-- 한틱 0.5m 이상 튀면 점프 -->
+    <param name="hold_outlier_n"  value="2"/>       <!-- 2틱까지는 무시 -->
+    <param name="clamp_pos_step"  value="0.20"/>    <!-- 틱당 시각적 이동 상한 -->
+    <param name="lp_alpha"        value="0.2"/>     <!-- EMA 저역통과 -->
+    <param name="median_win"      value="3"/>       <!-- 3/5 권장 -->
+    <param name="blend_duration"  value="0.3"/>     <!-- map->odom 보정을 0.3s 블렌딩 -->
+    </node>
+  </group>
+
+    <!-- ================= wheelbird6 ================= -->
+  <group ns="wheelbird6">
+    <arg name="ID" value="6"/>
+    <arg name="fcu_url" default="udp://:14546@localhost:14586"/>
+
+    <include file="$(find px4)/launch/single_wheelbird.launch">
+      <arg name="x" value="2"/>
+      <arg name="y" value="-4"/>
+      <arg name="z" value="0"/>
+      <arg name="R" value="0"/>
+      <arg name="P" value="0"/>
+      <arg name="Y" value="0"/>
+      <arg name="vehicle" value="$(arg vehicle)"/>
+      <arg name="mavlink_udp_port" value="14566"/>
+      <arg name="mavlink_tcp_port" value="4566"/>
+      <arg name="ID" value="$(arg ID)"/>
+      <arg name="gst_udp_port" value="$(eval 5600 + arg('ID'))"/>
+      <arg name="video_uri" value="$(eval 5600 + arg('ID'))"/>
+      <arg name="mavlink_cam_udp_port" value="$(eval 14530 + arg('ID'))"/>
+    </include>
+
+    <include file="$(find mavros)/launch/px4.launch">
+      <arg name="fcu_url" value="$(arg fcu_url)"/>
+      <arg name="gcs_url" value=""/>
+      <arg name="tgt_system" value="$(eval 1 + arg('ID'))"/>
+      <arg name="tgt_component" value="1"/>
+    </include>
+
+    <param name="robot_description"
+           command="$(find xacro)/xacro --inorder '$(arg xacro_file)' namespace:=wheelbird6 enable_mavlink_interface:=false"/>
+
+    <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher" output="screen">
+      <param name="rate" value="50"/>
+      <param name="use_gui" value="false"/>
+    </node>
+
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+      <param name="use_tf_static" value="true"/>
+      <param name="publish_frequency" value="50.0"/>
+    </node>
+
+    <node pkg="wheelbird" type="wheelbird_rviz.py" name="offset_tf_broadcaster" output="screen">
+    <param name="parent_frame" value="map"/>
+    <param name="child_frame"  value="wheelbird6/base_link"/>
+    <param name="pose_topic"   value="/wheelbird6/mavros/local_position/pose"/>
+    <!-- 스파이크/점프 대응 파라미터 -->
+    <param name="jump_pos_thresh" value="0.5"/>     <!-- 한틱 0.5m 이상 튀면 점프 -->
+    <param name="hold_outlier_n"  value="2"/>       <!-- 2틱까지는 무시 -->
+    <param name="clamp_pos_step"  value="0.20"/>    <!-- 틱당 시각적 이동 상한 -->
+    <param name="lp_alpha"        value="0.2"/>     <!-- EMA 저역통과 -->
+    <param name="median_win"      value="3"/>       <!-- 3/5 권장 -->
+    <param name="blend_duration"  value="0.3"/>     <!-- map->odom 보정을 0.3s 블렌딩 -->
+    </node>
+  </group>
+  <!-- ===== RViz ===== -->
+  <group if="$(arg rviz)">
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find wheelbird)/wheelbird.rviz"/>
+  </group>
+</launch>

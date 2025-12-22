@@ -1,0 +1,32 @@
+# ROS build directories
+build/
+devel/
+install/
+logs/
+.catkin_workspace
+
+# C/C++ compilation artifacts
+*.o
+*.obj
+*.so
+*.a
+*.lib
+*.dll
+*.exe
+bin/
+lib/
+
+# Python
+*.pyc
+__pycache__/
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.swp
+*~
+*.user
+CMakeLists.txt.user
+
+# Bag files (용량이 크므로 보통 제외)
+*.bag

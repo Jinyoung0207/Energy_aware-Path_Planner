@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+  <rosparam command="delete" param="/reservations"/>
+
+  <arg name="pkg"           default="energy_planner"/>
+  <arg name="config"        default="$(find energy_planner)/config/energy_aware_path_planner.yaml"/>
+  <arg name="octomap_topic" default="/octomap_binary"/>
+
+  <node pkg="$(arg pkg)" type="energy_aware_path_planner" name="energy_aware_path_planner" output="screen">
+    <rosparam command="load" file="$(arg config)"/>
+
+    <param name="octomap_topic" value="$(arg octomap_topic)"/>
+  </node>
+</launch>

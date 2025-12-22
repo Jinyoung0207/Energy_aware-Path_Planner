@@ -1,0 +1,17 @@
+frame_id: map
+N: 30
+dt: 0.1
+v_max: 0.55
+v_min: 0
+omega_max: 1.5
+ref_topic_name: '/ref_trajectory'
+pose_topic_name: '/global_pose'
+
+pre_topic_name: '/pre_path'
+Q_x: 0.1
+Q_y: 0.1
+Q_theta: 0.04
+R_v: 0.04
+R_omega: 0.04
+R_z_vel: 0.04
+terminal_weight: 10
