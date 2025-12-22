@@ -44,3 +44,8 @@ roslaunch wheelbird_control mpc(n)_ground.launch
 # 6. 공중 비행 제어 (Aerial Control - PX4 based)
 rosrun wheelbird_control wheelbird(n)_setpoint
 ```
+### 4. Arming & Mode switch (시동 & Offboard)
+```bash
+# 7. 시동 및 모드 전환 
+rosrun wheelbird_control set_mode (key num 1 for the arming, key num 2 for the offboard)
+```
