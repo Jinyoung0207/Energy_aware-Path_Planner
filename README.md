@@ -26,6 +26,8 @@ roslaunch wheelbird_gazebo wheelbird_multi_rviz.launch
 rosrun octomap_generator octomap_publish_node
 ```
 ### 2. Global Path Planning & Local Path Planning (경로 생성)
+energy_aware_path_planner.yaml 파일에 정의된 파라미터 gamma_air_eff_는 공중 이동 가중치로 공중 경로 비중 조절 가능
+e_grd_jpm, e_air_jpm, e_wait_grd_jps는 산출된 로봇의 모드별 에너지 소모량  
 ```bash
 # 3. Energy-aware Global Path Planner 실행
 roslaunch energy_planner energy_aware_path_planner.launch
