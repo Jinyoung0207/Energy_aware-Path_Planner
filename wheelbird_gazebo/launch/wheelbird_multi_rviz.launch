@@ -2,8 +2,8 @@
 <launch>
   <!-- ===== 기본 인자 ===== -->
   <arg name="est" default="ekf2"/>
-  <!-- <arg name="world" default="/home/jinyoung/building_editor_models/지상장애물_벽.world"/> -->
-  <arg name="world" default="/home/jinyoung/building_editor_models/좁은통로.world"/>
+  <arg name="world" default="/home/jinyoung/building_editor_models/지상장애물_벽.world"/>
+  <!-- <arg name="world" default="/home/jinyoung/building_editor_models/좁은통로.world"/> -->
 
   <arg name="vehicle" default="wheelbird"/>
   <arg name="rviz" default="true"/>

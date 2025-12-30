@@ -556,44 +556,67 @@ namespace energy_planner
         path_pub_ = nh_.advertise<nav_msgs::Path>("global_path", 1, true);
     }
 
-    void EnergyPathPlanner::octomapCallback(const octomap_msgs::Octomap::ConstPtr& msg) 
+    void EnergyPathPlanner::octomapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
     {
+        // 1. ROS 메시지 -> Octomap 변환
         std::unique_ptr<octomap::AbstractOcTree> abs(
             msg->binary ? octomap_msgs::binaryMsgToMap(*msg) : octomap_msgs::fullMsgToMap(*msg));
-        if (!abs) return;
-        auto* tree = dynamic_cast<octomap::OcTree*>(abs.get());
-        if (!tree) return;
-
-        // Octomap to Grid 변환
-        map_.resolution = tree->getResolution();
-        map_.z_resolution = map_.resolution; 
+        if (!abs) { ROS_WARN("Failed to convert Octomap"); return; }
         
-        double min_x, min_y, min_z, max_x, max_y, max_z;
-        tree->getMetricMin(min_x, min_y, min_z);
-        tree->getMetricMax(max_x, max_y, max_z);
+        auto* tree = dynamic_cast<octomap::OcTree*>(abs.get());
+        if (!tree) { ROS_WARN("Octomap is not OcTree"); return; }
 
-        map_.origin_x = min_x; map_.origin_y = min_y; map_.origin_z = min_z;
-        map_.width  = (int)((max_x - min_x) / map_.resolution) + 5;
-        map_.height = (int)((max_y - min_y) / map_.resolution) + 5;
-        map_.depth  = (int)((max_z - min_z) / map_.z_resolution) + 5;
+        // 2. 맵 설정 (생성자 값 사용)
+        const int D = map_.depth;
+        const int H = map_.height;
+        const int W = map_.width;
 
-        map_.grid.assign(map_.depth, std::vector<std::vector<uint8_t>>(map_.height, std::vector<uint8_t>(map_.width, 0)));
+        map_.resolution = tree->getResolution();
+        map_.z_resolution = map_.resolution;
 
-        for(auto it = tree->begin_leafs(); it != tree->end_leafs(); ++it) 
+        // 3. 메모리 할당
+        auto& grid = map_.grid;
+        if ((int)grid.size() != D || 
+            (D > 0 && (int)grid[0].size() != H) || 
+            (H > 0 && (int)grid[0][0].size() != W))
         {
-            if(tree->isNodeOccupied(*it)) 
+            grid.assign(D, std::vector<std::vector<uint8_t>>(H, std::vector<uint8_t>(W, 0)));
+        }
+        else
+        {
+            for(auto& layer : grid)
+                for(auto& row : layer)
+                    std::fill(row.begin(), row.end(), 0);
+        }
+
+        for (int z = 0; z < D; ++z) 
+        {
+            for (int y = 0; y < H; ++y) 
             {
-                GridIdx g = worldToGrid(it.getX(), it.getY(), it.getZ());
-                if(g.x>=0 && g.x<map_.width && g.y>=0 && g.y<map_.height && g.z>=0 && g.z<map_.depth) 
+                for (int x = 0; x < W; ++x) 
                 {
-                    map_.grid[g.z][g.y][g.x] = OCCUPIED;
+                    const double wx = map_.origin_x + (x + 0.5) * map_.resolution;
+                    const double wy = map_.origin_y + (y + 0.5) * map_.resolution;
+                    const double wz = map_.origin_z + (z + 0.5) * map_.z_resolution;
+
+                    octomap::OcTreeNode* node = tree->search(octomap::point3d(wx, wy, wz));
+                    
+                    if (node != NULL && tree->isNodeOccupied(node)) 
+                    {
+                        grid[z][y][x] = 255;
+                    }
+                    else 
+                    {
+                        grid[z][y][x] = 0;
+                    }
                 }
             }
         }
-        
         has_voxel_ = true;
         initialized_ = true; 
-        ROS_INFO_THROTTLE(5.0, "Octomap updated. Size: %dx%dx%d", map_.width, map_.height, map_.depth);
+        voxel_sub_.shutdown(); 
+
+        ROS_INFO("Octomap received & saved. Subscriber shutdown (One-shot mode).");
     }
 
     GridIdx EnergyPathPlanner::worldToGrid(double wx, double wy, double wz) const 
@@ -640,12 +663,11 @@ namespace energy_planner
                     if (cur.z == 0 && dz < 0) continue; 
 
                     GridIdx n{cur.x + dx, cur.y + dy, cur.z + dz};
-                    if (n.x >= 0 && n.x < map_.width &&
-                        n.y >= 0 && n.y < map_.height &&
-                        n.z >= 0 && n.z < map_.depth) 
-                    {
-                        ns.push_back(n);
-                    }
+                    if (n.x < 0 || n.y < 0 || n.z < 0 ||
+                        n.x >= map_.width || n.y >= map_.height || n.z >= map_.depth)
+                      continue;
+            
+                    ns.push_back(n);
                 }
             }
         }
