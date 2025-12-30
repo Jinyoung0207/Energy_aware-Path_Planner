@@ -14,7 +14,7 @@
 ## 🚀 How to Run (실행 방법)
 
 ### 1. Simulation & Map Setup (시뮬레이션 및 맵 로드)
-먼저 가제보 시뮬레이터와 RViz를 실행하고, Octomap을 생성합니다.
+먼저 가제보 시뮬레이터와 RViz를 실행하고, Octomap을 생성
 
 ```bash
 # 1. 맵 로드 및 로봇 스폰 (현재 4대 설정)
