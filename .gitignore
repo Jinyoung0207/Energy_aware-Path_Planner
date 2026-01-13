@@ -28,5 +28,5 @@ __pycache__/
 *.user
 CMakeLists.txt.user
 
-# Bag files (용량이 크므로 보통 제외)
+# Bag files
 *.bag
