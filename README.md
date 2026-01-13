@@ -7,6 +7,8 @@
 * **Middleware:** ROS Noetic
 * **Simulator:** Gazebo Classic, PX4-SITL
 * **Communication:** MAVROS
+* **Language:** C++
+
 * **Vehicle:** Wheelbird (Passive wheel mechanism)
 
 ---
